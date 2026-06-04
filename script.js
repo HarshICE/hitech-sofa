@@ -78,7 +78,7 @@ document
     try {
 
       const response = await fetch(
-        'https://formsubmit.co/ajax/icecreamwalaharsh6600@gmail.com',
+        'https://formsubmit.co/ajax/dharmesh2014@gmail.com',
         {
           method: 'POST',
           body: formData
