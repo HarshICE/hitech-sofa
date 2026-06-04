@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hi tech Product Gallery</title>
+  <meta name="description" content="Hi Tech Sofa - auto-loading multi-category furniture gallery.">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav-wrap">
+      <h1 class="brand">Hi Tech</h1>
+      <nav>
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="sofa-gallery.html">Gallery</a></li>
+          <!--<li><a href="upload.html">Upload</a></li>-->
+          <li><a href="index.html#seller">Seller Info</a></li>
+          <li><a href="index.html#contact">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="page-intro">
+      <div class="container">
+        <h2>Our Product Gallery</h2>
+      </div>
+    </section>
+
+    <section class="section" id="products">
+      <div class="container">
+        <div class="category-filters" id="categoryFilters">
+          <button class="filter-btn active" data-category="All">All</button>
+          <button class="filter-btn" data-category="Bedroom Chair">Bedroom Chair</button>
+          <button class="filter-btn" data-category="Beds">Beds</button>
+          <button class="filter-btn" data-category="Dining Table">Dining Table</button>
+          <button class="filter-btn" data-category="Making Sofa">Making Sofa</button>
+          <button class="filter-btn" data-category="Sofa">Sofa</button>
+        </div>
+        <p id="galleryStatus" class="gallery-status">Loading images...</p>
+        <div class="sofa-grid" id="galleryGrid"></div>
+        <div class="gallery-actions">
+			<a class="btn secondary" href="index.html#contact">Send Enquiry</a>
+		</div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year"></span> Hi Tech Sofa. All rights reserved.</p>
+    </div>
+  </footer>
+  <script>
+const supabaseUrl = 'https://efobfvnvkpciavnszxtq.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmb2Jmdm52a3BjaWF2bnN6eHRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1Mzg5MzQsImV4cCI6MjA5NjExNDkzNH0.23L0TKA7pVPvaIEvOr1xiXTCvSDj3MYatDH0IS-kc3A';
+let allProducts = [];
+
+window.sb = window.supabase.createClient(
+  supabaseUrl,
+  supabaseKey
+);
+
+const BUCKET = 'Sofa Gallary';
+
+const categories = [
+  'Bedroom Chair',
+  'Beds',
+  'Dining Table',
+  'Making Sofa',
+  'Sofa'
+];
+
+async function loadCategory(category) {
+
+  const galleryGrid = document.getElementById('galleryGrid');
+
+  const { data } = await window.sb.storage.listBuckets();
+  console.log(data);
+
+  
+
+  data.forEach(file => {
+
+    if (!file.name.match(/\.(jpg|jpeg|png|webp)$/i))
+      return;
+
+    const imageUrl =
+      `${supabaseUrl}/storage/v1/object/public/${encodeURIComponent(BUCKET)}/${category}/${file.name}`;
+
+    const card = document.createElement('div');
+
+    card.className = 'sofa-card';
+
+    card.innerHTML = `
+      <img src="${imageUrl}" alt="${file.name}" loading="lazy">
+      <div class="sofa-info">
+        <h3>${category}</h3>
+      </div>
+    `;
+
+    galleryGrid.appendChild(card);
+  });
+}
+
+function renderGallery(products) {
+
+  const galleryGrid = document.getElementById('galleryGrid');
+
+  galleryGrid.innerHTML = '';
+
+  products.forEach(item => {
+
+    const card = document.createElement('div');
+
+    card.className = 'sofa-card';
+
+    card.innerHTML = `
+      <img
+        src="${item.image_url}"
+        alt="Furniture Image"
+        class="gallery-image"
+        draggable="false"
+      >
+    `;
+
+    galleryGrid.appendChild(card);
+  });
+
+}
+
+async function loadGallery() {
+
+const status = document.getElementById('galleryStatus');
+const galleryGrid = document.getElementById('galleryGrid');
+
+status.textContent = 'Loading images...';
+
+const { data, error } = await window.sb
+  .from('Sofa Gallary')
+  .select('*')
+  .order('id');
+
+console.log(data);
+
+if (error) {
+console.error(error);
+status.textContent = 'Failed to load gallery';
+return;
+}
+
+galleryGrid.innerHTML = '';
+
+allProducts = data;
+renderGallery(data);
+
+status.textContent = `${data.length} products loaded`;
+}
+
+function setupFilters() {
+
+  const buttons = document.querySelectorAll('.filter-btn');
+
+  buttons.forEach(button => {
+
+    button.addEventListener('click', () => {
+
+      buttons.forEach(btn =>
+        btn.classList.remove('active')
+      );
+
+      button.classList.add('active');
+
+      const category =
+        button.dataset.category;
+
+      if (category === 'All') {
+        renderGallery(allProducts);
+      } else {
+        renderGallery(
+          allProducts.filter(
+            item => item.category === category
+          )
+        );
+      }
+
+    });
+
+  });
+
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  document.getElementById('year').textContent =
+    new Date().getFullYear();
+
+  loadGallery();
+  setupFilters();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  const lightbox =
+    document.getElementById('lightbox');
+
+  const lightboxImage =
+    document.getElementById('lightboxImage');
+
+  const closeButton =
+    document.querySelector('.close-lightbox');
+
+  document.addEventListener('click', function(e) {
+
+    if (e.target.classList.contains('gallery-image')) {
+
+      lightboxImage.src = e.target.src;
+
+      lightbox.style.display = 'flex';
+    }
+
+  });
+
+  if (closeButton) {
+
+    closeButton.addEventListener('click', () => {
+
+      lightbox.style.display = 'none';
+
+    });
+
+  }
+
+  lightbox.addEventListener('click', function(e) {
+
+    if (e.target === lightbox) {
+
+      lightbox.style.display = 'none';
+
+    }
+
+  });
+
+});
+
+document.addEventListener('keydown', function(e) {
+
+  if (e.key === 'Escape') {
+
+    document.getElementById('lightbox')
+      .style.display = 'none';
+
+  }
+
+});
+
+</script>
+<script>
+document.addEventListener('contextmenu', function(e) {
+  if (e.target.tagName === 'IMG') {
+    e.preventDefault();
+  }
+});
+</script>
+<div id="lightbox" class="lightbox">
+  <span class="close-lightbox">&times;</span>
+
+  <img
+    id="lightboxImage"
+    class="lightbox-image"
+    src=""
+    alt="Furniture Image"
+  >
+</div>
+</body>
+</html>
