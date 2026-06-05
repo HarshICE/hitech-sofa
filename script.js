@@ -46,11 +46,19 @@ let currentHeroImage = 0;
 
 function rotateHeroImages() {
 
-  const hero =
-    document.querySelector('.hero');
+  const heroBg =
+    document.querySelector('.hero-bg');
 
-  hero.style.backgroundImage =
+  heroBg.style.opacity = 0;
+
+  setTimeout(() => {
+
+  heroBg.style.backgroundImage =
     `url('${heroImages[currentHeroImage]}')`;
+
+  heroBg.style.opacity = 1;
+
+  }, 750);
 
   currentHeroImage =
     (currentHeroImage + 1) %
@@ -78,7 +86,7 @@ document
     try {
 
       const response = await fetch(
-        'https://formsubmit.co/ajax/dharmesh2014@gmail.com',
+        'https://formsubmit.co/ajax/sales.hitechsofa@gmail.com',
         {
           method: 'POST',
           body: formData

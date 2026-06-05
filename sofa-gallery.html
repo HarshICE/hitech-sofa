@@ -11,7 +11,12 @@
 <body>
   <header class="site-header">
     <div class="container nav-wrap">
-      <h1 class="brand">Hi Tech</h1>
+      <a href="index.html" class="brand">
+        <img src="logo.png" alt="Hi Tech Sofa Logo" class="logo">
+        <!--<span class="brand-text">
+          Hi Tech <span class="brand-accent">Sofa</span>
+        </span>-->
+      </a>
       <nav>
         <ul class="nav-links">
           <li><a href="index.html">Home</a></li>
@@ -178,14 +183,28 @@ function setupFilters() {
       const category =
         button.dataset.category;
 
+      const status =
+        document.getElementById('galleryStatus');
+
       if (category === 'All') {
+
         renderGallery(allProducts);
+
+        status.textContent =
+          `Showing all ${allProducts.length} products`;
+
       } else {
-        renderGallery(
+
+        const filteredProducts =
           allProducts.filter(
             item => item.category === category
-          )
-        );
+          );
+
+        renderGallery(filteredProducts);
+
+        status.textContent =
+          `Showing ${filteredProducts.length} ${category} products`;
+
       }
 
     });
