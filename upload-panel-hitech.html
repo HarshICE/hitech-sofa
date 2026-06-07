@@ -58,6 +58,91 @@ button:hover{
   margin-top:20px;
   font-weight:bold;
 }
+
+#previewContainer{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+  gap:10px;
+  margin-top:15px;
+}
+
+.preview-card{
+  border:1px solid #ddd;
+  border-radius:8px;
+  padding:5px;
+  background:#fff;
+  text-align:center;
+}
+
+.preview-card img{
+  width:100%;
+  height:100px;
+  object-fit:cover;
+  border-radius:6px;
+}
+
+.preview-card p{
+  font-size:12px;
+  margin-top:5px;
+  word-break:break-word;
+}
+
+.category-filters{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-bottom:20px;
+}
+
+.admin-filter{
+  width:auto;
+  padding:10px 15px;
+}
+
+.admin-filter.active{
+  background:#198754;
+}
+
+#photoGallery{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:15px;
+  margin-top:20px;
+}
+
+.admin-card{
+  border:1px solid #ddd;
+  border-radius:10px;
+  overflow:hidden;
+  background:#fff;
+}
+
+.admin-card img{
+  width:100%;
+  height:120px;
+  object-fit:cover;
+  display:block;
+}
+
+.admin-card p{
+  font-size:12px;
+  padding:8px;
+  margin:0;
+  word-break:break-word;
+}
+
+.delete-btn{
+  width:100%;
+  background:#dc3545;
+  border:none;
+  color:white;
+  padding:10px;
+  cursor:pointer;
+}
+
+.delete-btn:hover{
+  background:#b02a37;
+}
 </style>
 </head>
 
@@ -101,11 +186,14 @@ Login
 
 <label>Select Images</label>
 
+
 <input
   type="file"
   id="images"
   multiple
   accept="image/*">
+
+<div id="previewContainer"></div>
 
 <button onclick="uploadImages()">
 Upload Images
@@ -114,6 +202,47 @@ Upload Images
   Logout
 </button>
 <div id="status"></div>
+
+<hr style="margin:30px 0">
+
+<h2>Manage Photos</h2>
+<div class="category-filters">
+
+  <button class="admin-filter active"
+          data-category="All">
+    All
+  </button>
+
+  <button class="admin-filter"
+          data-category="Bedroom Chair">
+    Bedroom Chair
+  </button>
+
+  <button class="admin-filter"
+          data-category="Beds">
+    Beds
+  </button>
+
+  <button class="admin-filter"
+          data-category="Dining Table">
+    Dining Table
+  </button>
+
+  <button class="admin-filter"
+          data-category="Making Sofa">
+    Making Sofa
+  </button>
+
+  <button class="admin-filter"
+          data-category="Sofa">
+    Sofa
+  </button>
+
+</div>
+
+<p id="photoCount"></p>
+
+<div id="photoGallery"></div>
 
 </div>
 
@@ -132,6 +261,131 @@ supabase.createClient(
   supabaseUrl,
   supabaseKey
 );
+
+let allPhotos = [];
+
+async function loadImages() {
+
+  const gallery =
+    document.getElementById('photoGallery');
+
+  gallery.innerHTML = 'Loading...';
+
+  const { data, error } =
+    await sb
+      .from('Sofa Gallary')
+      .select('*')
+      .order('id', { ascending:false });
+
+  if(error){
+    gallery.innerHTML =
+      'Failed to load images';
+    return;
+  }
+
+  gallery.innerHTML = '';
+
+  allPhotos = data;
+
+  renderPhotos(data);
+
+}
+
+function renderPhotos(images){
+
+  const gallery =
+    document.getElementById('photoGallery');
+
+  const count =
+    document.getElementById('photoCount');
+
+  gallery.innerHTML = '';
+
+  count.innerHTML =
+    `${images.length} images`;
+
+  images.forEach(item => {
+
+    const card =
+      document.createElement('div');
+
+    card.className =
+      'admin-card';
+
+    card.innerHTML = `
+      <img src="${item.image_url}">
+
+      <p>${item.category}</p>
+
+      <button
+        class="delete-btn"
+        onclick="deleteImage(
+          ${item.id},
+          '${item.image_url}'
+        )">
+        Delete
+      </button>
+    `;
+
+    gallery.appendChild(card);
+
+  });
+
+}
+
+function setupFilters(){
+
+  const buttons =
+    document.querySelectorAll(
+      '.admin-filter'
+    );
+
+  buttons.forEach(btn => {
+
+    btn.addEventListener(
+      'click',
+      () => {
+
+        buttons.forEach(b =>
+          b.classList.remove(
+            'active'
+          )
+        );
+
+        btn.classList.add(
+          'active'
+        );
+
+        const category =
+          btn.dataset.category;
+
+        if(category === 'All'){
+
+          renderPhotos(
+            allPhotos
+          );
+
+        }
+        else{
+
+          renderPhotos(
+
+            allPhotos.filter(
+              item =>
+              item.category ===
+              category
+            )
+
+          );
+
+        }
+
+      }
+    );
+
+  });
+
+}
 
 async function login() {
 
@@ -158,6 +412,10 @@ async function login() {
   document.getElementById('uploadSection')
     .style.display = 'block';
 
+  loadImages();
+
+  resetInactivityTimer();
+
 }
 
 const prefixMap = {
@@ -169,6 +427,46 @@ const prefixMap = {
 };
 
 const BUCKET = 'Sofa Gallary';
+
+document
+  .getElementById('images')
+  .addEventListener('change', showPreview);
+
+function showPreview(){
+
+  const files =
+    document.getElementById('images').files;
+
+  const container =
+    document.getElementById('previewContainer');
+
+  container.innerHTML = '';
+
+  for(const file of files){
+
+    const reader = new FileReader();
+
+    reader.onload = function(e){
+
+      const card =
+        document.createElement('div');
+
+      card.className = 'preview-card';
+
+      card.innerHTML = `
+        <img src="${e.target.result}">
+        <p>${file.name}</p>
+      `;
+
+      container.appendChild(card);
+
+    };
+
+    reader.readAsDataURL(file);
+
+  }
+
+}
 
 async function uploadImages(){
 
@@ -235,9 +533,75 @@ for(let i=0;i<files.length;i++){
 status.innerHTML =
 '✅ Upload Complete';
 
+loadImages();
+
 document
   .getElementById('images')
   .value = '';
+
+document
+  .getElementById('previewContainer')
+  .innerHTML = '';
+
+}
+
+async function deleteImage(
+  id,
+  imageUrl
+) {
+
+  const confirmation =
+    prompt(
+      'Type DELETE to remove this image'
+    );
+
+  if(
+    confirmation !== 'DELETE'
+  ){
+    return;
+  }
+
+  try {
+
+    const filePath =
+      decodeURIComponent(imageUrl)
+      .split(
+        '/object/public/Sofa Gallary/'
+      )[1];
+
+    const {
+      error: storageError
+    } =
+    await sb.storage
+      .from('Sofa Gallary')
+      .remove([filePath]);
+
+    if(storageError)
+      throw storageError;
+
+    const {
+      error: dbError
+    } =
+    await sb
+      .from('Sofa Gallary')
+      .delete()
+      .eq('id', id);
+
+    if(dbError)
+      throw dbError;
+
+    alert('Deleted successfully');
+
+    loadImages();
+
+  }
+  catch(error){
+
+    console.error(error);
+
+    alert('Delete failed');
+
+  }
 
 }
 
@@ -253,17 +617,23 @@ document.addEventListener(
   'DOMContentLoaded',
   async () => {
 
+    setupFilters();
+
     const {
       data: { session }
     } = await sb.auth.getSession();
 
     if(session) {
-
+      
       document.getElementById('loginSection')
         .style.display = 'none';
 
       document.getElementById('uploadSection')
         .style.display = 'block';
+
+      loadImages();
+
+      resetInactivityTimer();
 
     } else {
 
@@ -277,6 +647,44 @@ document.addEventListener(
 
   }
 );
+
+let inactivityTimer;
+
+function resetInactivityTimer() {
+
+  clearTimeout(inactivityTimer);
+
+  inactivityTimer = setTimeout(
+    async () => {
+
+      await sb.auth.signOut();
+
+      alert(
+        'Session expired due to inactivity'
+      );
+
+      location.reload();
+
+    },
+    30 * 60 * 1000 // 30 minutes
+  );
+
+}
+
+[
+  'mousemove',
+  'mousedown',
+  'keypress',
+  'touchstart',
+  'scroll'
+].forEach(event => {
+
+  document.addEventListener(
+    event,
+    resetInactivityTimer
+  );
+
+});
 
 </script>
 
