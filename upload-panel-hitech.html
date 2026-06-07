@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Hi Tech Sofa Admin Upload</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+  font-family:Arial,sans-serif;
+  background:#f5f5f5;
+  padding:20px;
+}
+
+.container{
+  max-width:600px;
+  margin:auto;
+  background:white;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 0 10px rgba(0,0,0,.1);
+}
+
+h1{
+  text-align:center;
+}
+
+label{
+  display:block;
+  margin-top:15px;
+  font-weight:bold;
+}
+
+select,
+input[type=file],
+button{
+  width:100%;
+  padding:12px;
+  margin-top:8px;
+}
+
+button{
+  background:#0d6efd;
+  color:white;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+button:hover{
+  background:#084fc7;
+}
+
+#status{
+  margin-top:20px;
+  font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<div id="loginSection">
+
+<h2>Admin Login</h2>
+
+<input
+type="email"
+id="email"
+placeholder="Email">
+
+<input
+type="password"
+id="password"
+placeholder="Password">
+
+<button onclick="login()">
+Login
+</button>
+
+</div>
+
+<div id="uploadSection" style="display:none">
+
+<div class="container">
+
+<h1>Hi Tech Sofa Upload</h1>
+
+<label>Category</label>
+
+<select id="category">
+  <option>Sofa</option>
+  <option>Beds</option>
+  <option>Dining Table</option>
+  <option>Bedroom Chair</option>
+  <option>Making Sofa</option>
+</select>
+
+<label>Select Images</label>
+
+<input
+  type="file"
+  id="images"
+  multiple
+  accept="image/*">
+
+<button onclick="uploadImages()">
+Upload Images
+</button>
+<button onclick="logout()">
+  Logout
+</button>
+<div id="status"></div>
+
+</div>
+
+</div>
+
+<script>
+
+const supabaseUrl =
+'https://efobfvnvkpciavnszxtq.supabase.co';
+
+const supabaseKey =
+'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmb2Jmdm52a3BjaWF2bnN6eHRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1Mzg5MzQsImV4cCI6MjA5NjExNDkzNH0.23L0TKA7pVPvaIEvOr1xiXTCvSDj3MYatDH0IS-kc3A';
+
+const sb =
+supabase.createClient(
+  supabaseUrl,
+  supabaseKey
+);
+
+async function login() {
+
+  const email =
+    document.getElementById('email').value;
+
+  const password =
+    document.getElementById('password').value;
+
+  const { error } =
+    await sb.auth.signInWithPassword({
+      email,
+      password
+    });
+
+  if(error) {
+    alert(error.message);
+    return;
+  }
+
+  document.getElementById('loginSection')
+    .style.display = 'none';
+
+  document.getElementById('uploadSection')
+    .style.display = 'block';
+
+}
+
+const prefixMap = {
+  "Bedroom Chair": "bedroom_chair",
+  "Beds": "bed_back",
+  "Dining Table": "dining_table",
+  "Making Sofa": "making_sofa",
+  "Sofa": "sofa"
+};
+
+const BUCKET = 'Sofa Gallary';
+
+async function uploadImages(){
+
+const files =
+document.getElementById('images').files;
+
+const category =
+document.getElementById('category').value;
+
+const status =
+document.getElementById('status');
+
+if(files.length === 0){
+  alert('Please select images');
+  return;
+}
+
+for(let i=0;i<files.length;i++){
+
+  const file = files[i];
+
+  status.innerHTML =
+  `Uploading ${i+1} of ${files.length}`;
+
+  const prefix = prefixMap[category];
+
+  const ext =
+    file.name.split('.').pop().toLowerCase();
+
+  const fileName =
+    `${prefix}_${Date.now()}_${i}.${ext}`;
+
+  const filePath =
+  `${category}/${fileName}`;
+
+  const uploadResult =
+  await sb.storage
+    .from(BUCKET)
+    .upload(
+      filePath,
+      file
+    );
+
+  if(uploadResult.error){
+
+    console.error(uploadResult.error);
+
+    continue;
+  }
+
+  const imageUrl =
+  `${supabaseUrl}/storage/v1/object/public/${encodeURIComponent(BUCKET)}/${filePath}`;
+
+  await sb
+    .from('Sofa Gallary')
+    .insert({
+      title: fileName,
+      category: category,
+      image_url: imageUrl
+    });
+
+}
+
+status.innerHTML =
+'✅ Upload Complete';
+
+document
+  .getElementById('images')
+  .value = '';
+
+}
+
+async function logout() {
+
+  await sb.auth.signOut();
+
+  location.reload();
+
+}
+
+document.addEventListener(
+  'DOMContentLoaded',
+  async () => {
+
+    const {
+      data: { session }
+    } = await sb.auth.getSession();
+
+    if(session) {
+
+      document.getElementById('loginSection')
+        .style.display = 'none';
+
+      document.getElementById('uploadSection')
+        .style.display = 'block';
+
+    } else {
+
+      document.getElementById('loginSection')
+        .style.display = 'block';
+
+      document.getElementById('uploadSection')
+        .style.display = 'none';
+
+    }
+
+  }
+);
+
+</script>
+
+</body>
+</html>
